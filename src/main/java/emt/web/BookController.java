@@ -1,62 +1,71 @@
 package emt.web;
 
-import emt.model.dto.BookDto;
+import emt.model.dto.CreateBookDto;
+import emt.model.dto.UpdateBookDto;
+import emt.security.JwtConstants;
+import emt.service.application.BookApplicationService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import emt.service.BookService;
-import emt.model.Book;
+import emt.service.domain.BookService;
+import emt.model.domain.Book;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/books")
+@Tag(name = "Book api", description = "Endpoints for managing books")
 public class BookController {
 
-    private final BookService bookService;
+    private final BookApplicationService bookApplicationService;
 
-    public BookController(BookService bookService) {
-        this.bookService = bookService;
+    public BookController(BookApplicationService bookApplicationService) {
+        this.bookApplicationService = bookApplicationService;
     }
 
     @GetMapping
-    public List<Book> getAll(){
-        return bookService.findAll();
+    @Operation(summary = "List all books", description = "Retrieves a list of all the books")
+    public ResponseEntity<?> listAllBooks() {
+        return ResponseEntity.status(HttpStatus.OK).body(bookApplicationService.findAll());
     }
 
+
     @GetMapping("/{id}")
-    public ResponseEntity<Book> findById(@PathVariable Long id){
-        return bookService.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    @Operation(summary = "Get a book by ID", description = "Find a book by its ID")
+    public ResponseEntity<?> findBookById(@PathVariable Long id) {
+        return ResponseEntity.status(HttpStatus.OK).body(bookApplicationService.findById(id));
     }
 
     @PostMapping("/add")
-    public ResponseEntity<Book> save(@RequestBody BookDto book){
-        return bookService.save(book)
-                .map(ResponseEntity::ok)
-                .orElseGet(()->ResponseEntity.notFound().build());
+    @Operation(summary = "Add a new book", description = "Creates a new book on the given BookDto")
+    public ResponseEntity<?> addBook(@RequestBody CreateBookDto bookDto) {
+        return ResponseEntity.ok(bookApplicationService.save(bookDto));
     }
 
     @PutMapping("/edit/{id}")
-    public ResponseEntity<Book> update(@PathVariable Long id,
-                       @RequestBody BookDto book){
-        return bookService.update(id, book)
-                .map(ResponseEntity::ok)
-                .orElseGet(()->ResponseEntity.notFound().build());
+    @Operation(summary = "Update an existing book", description = "Updates a book by its ID")
+    public ResponseEntity<?> editBook(@RequestBody CreateBookDto bookDto, @PathVariable Long id) {
+        return ResponseEntity.ok(bookApplicationService.update(id, bookDto));
     }
 
     @DeleteMapping("/delete/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id){
-        if (bookService.findById(id).isPresent()) {
-            bookService.delete(id);
-            return ResponseEntity.noContent().build();
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+    @Operation(summary = "Delete a book", description = "Deletes a book by its ID")
+    public ResponseEntity<?> deleteBook(@PathVariable Long id) {
+        bookApplicationService.delete(id);
+        return ResponseEntity.ok().build();
+    }
+
+    public String extractTokenFromRequest(HttpServletRequest request){
+        String headerValue = request.getHeader(JwtConstants.HEADER);
+        return headerValue.substring(JwtConstants.TOKEN_PREFIX.length());
     }
 
     @PatchMapping("/rent/{id}")
-    public ResponseEntity<Book> markAsRented(@PathVariable Long id){
-        return bookService.markedAsRead(id)
+    @Operation(summary = "Rent a book", description = "Rents a book by its ID")
+    public ResponseEntity<UpdateBookDto> markAsRented(@PathVariable Long id){
+        return bookApplicationService.markedAsRead(id)
                 .map(ResponseEntity::ok)
                 .orElseGet(()->ResponseEntity.notFound().build());
     }
